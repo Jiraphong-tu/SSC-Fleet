@@ -1,0 +1,1161 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBL Fleet Performance & Maintenance Management System</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Prompt -->
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Prompt', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0284c7',
+                            600: '#0369a1',
+                            700: '#0369a1',
+                            800: '#075985',
+                            900: '#0c4a6e',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #f8fafc;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation & Role Switcher Header -->
+    <header class="bg-slate-900 text-white shadow-md sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2.5 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3">
+                <div class="bg-sky-500 p-2 rounded-xl text-white shadow-lg shadow-sky-500/30">
+                    <i class="fa-solid fa-truck-moving text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold leading-tight flex items-center gap-2">
+                        TBL Fleet Management System
+                        <span class="text-[10px] bg-sky-500/20 text-sky-300 border border-sky-400/30 px-2 py-0.5 rounded-full">v3.0 Downtime Tracker</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">ระบบติดตามความพร้อมรถ รถจอดซ่อม และค่าซ่อมบำรุง (PT, CH, KR, NS, SR)</p>
+                </div>
+            </div>
+            
+            <!-- Quick Role Switcher Buttons -->
+            <div class="flex items-center bg-slate-800 p-1 rounded-xl border border-slate-700/80">
+                <button onclick="switchRole('driver')" id="roleBtnDriver" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 bg-sky-600 text-white shadow-sm">
+                    <i class="fa-solid fa-mobile-screen-button"></i> 📱 โหมด พขร. (Driver)
+                </button>
+                <button onclick="switchRole('admin')" id="roleBtnAdmin" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-2">
+                    <i class="fa-solid fa-user-shield"></i> 💻 โหมด แอดมิน / ช่าง (Admin)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Toast Notification Banner -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 bg-slate-900 text-white px-4 py-3 rounded-xl shadow-xl flex items-center space-x-3 hidden transition-all duration-300 border border-slate-700">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toastMessage" class="text-xs font-medium">บันทึกข้อมูลเรียบร้อยแล้ว</span>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 1: DRIVER VIEW (โหมดพนักงานขับรถ)       -->
+    <!-- ========================================== -->
+    <div id="driverView" class="max-w-2xl mx-auto px-4 py-6 w-full space-y-5">
+        
+        <!-- Driver App Card Header -->
+        <div class="bg-gradient-to-r from-sky-600 to-blue-700 rounded-2xl p-5 text-white shadow-md relative overflow-hidden">
+            <div class="absolute right-[-10px] bottom-[-10px] opacity-10 text-8xl text-white">
+                <i class="fa-solid fa-id-card"></i>
+            </div>
+            <div class="relative z-10">
+                <div class="flex justify-between items-start">
+                    <span class="bg-white/20 text-white text-[11px] px-2.5 py-1 rounded-full backdrop-blur-md">ฟอร์มรายงานประจำวัน พขร.</span>
+                    <span id="currentDateDriver" class="text-xs text-sky-100"></span>
+                </div>
+                <h2 class="text-xl font-bold mt-2 flex items-center gap-2">
+                    <i class="fa-solid fa-clipboard-check"></i> บันทึกสถานะรถและแจ้งซ่อม
+                </h2>
+                <p class="text-xs text-sky-100 mt-1">กรุณากรอกข้อมูลหลังจบกะวิ่งงาน หรือทันทีที่พบปัญหารถเสีย</p>
+            </div>
+        </div>
+
+        <!-- Driver Submission Form Card -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <form id="driverEntryForm" onsubmit="handleDriverSubmit(event)" class="space-y-4">
+                
+                <!-- Truck Plate & Plant Selection -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                            <i class="fa-solid fa-truck text-sky-600"></i> ทะเบียนรถหัวลาก <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="driverTruckSelect" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:bg-white outline-none transition font-medium">
+                            <option value="">-- เลือกทะเบียนรถ --</option>
+                            <option value="629330กท">629330กท (หัวลาก 22W-Wing)</option>
+                            <option value="629331กท">629331กท (หัวลาก 22W-Wing)</option>
+                            <option value="634973กท">634973กท (หัวลาก 22W-Side)</option>
+                            <option value="634974กท">634974กท (หัวลาก 22W-Side)</option>
+                            <option value="634975กท">634975กท (หัวลาก 10W-Side)</option>
+                            <option value="634976กท">634976กท (หัวลาก 10W-Side)</option>
+                            <option value="634977กท">634977กท (หัวลาก 22W-Side)</option>
+                            <option value="634980กท">634980กท (หัวลาก 22W-Wing)</option>
+                            <option value="634981กท">634981กท (หัวลาก 22W-Wing)</option>
+                            <option value="custom">+ ระบุทะเบียนอื่น...</option>
+                        </select>
+                        <input type="text" id="driverCustomTruck" placeholder="พิมพ์ทะเบียนรถ..." class="w-full px-3.5 py-2 mt-2 text-xs border border-slate-300 rounded-xl hidden">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                            <i class="fa-solid fa-location-dot text-sky-600"></i> พื้นที่ปฏิบัติการ (Plant) <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="driverPlantSelect" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:bg-white outline-none transition font-medium">
+                            <option value="PT">PT (ปทุมธานี)</option>
+                            <option value="CH">CH (ฉะเชิงเทรา)</option>
+                            <option value="KR">KR (โคราช)</option>
+                            <option value="NS">NS (หนองแค)</option>
+                            <option value="SR">SR (สระบุรี)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Vehicle Status & Distance -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                            <i class="fa-solid fa-traffic-light text-sky-600"></i> สถานะความพร้อมวันนี้ <span class="text-rose-500">*</span>
+                        </label>
+                        <select id="driverStatusSelect" required onchange="toggleDriverRepairFields()" class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:bg-white outline-none transition font-semibold text-slate-800">
+                            <option value="ready" class="text-emerald-600 font-bold">🟢 พร้อมใช้งาน (Ready)</option>
+                            <option value="down" class="text-rose-600 font-bold">🔴 จอดซ่อม / แจ้งเสีย (Down)</option>
+                            <option value="pm" class="text-amber-600 font-bold">🟡 เข้าเช็กระยะ PM (Scheduled)</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+                            <i class="fa-solid fa-gauge-high text-sky-600"></i> ระยะทางที่วิ่งได้วันนี้ (กิโลเมตร) <span class="text-rose-500">*</span>
+                        </label>
+                        <input type="number" id="driverDistanceInput" min="0" placeholder="เช่น 350 (จอดซ่อมใส่ 0)" required class="w-full px-3.5 py-2.5 text-xs bg-slate-50 border border-slate-300 rounded-xl focus:ring-2 focus:ring-sky-500 focus:bg-white outline-none transition font-semibold">
+                    </div>
+                </div>
+
+                <!-- DYNAMIC REPAIR FIELDS (ปรากฏเมื่อจอดซ่อม หรือ PM) -->
+                <div id="driverRepairFields" class="space-y-4 p-4 bg-rose-50/50 border border-rose-200/80 rounded-xl hidden">
+                    <div class="text-xs font-bold text-rose-800 flex items-center gap-1.5">
+                        <i class="fa-solid fa-triangle-exclamation text-rose-600"></i> ข้อมูลเพิ่มเติมสำหรับรถไม่พร้อมใช้งาน / จอดซ่อม
+                    </div>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">หมวดหมู่อาการเสีย / ปัญหา</label>
+                            <select id="driverIssueCategory" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none bg-white">
+                                <option value="ระบบเบรก / ลม">ระบบเบรก / ลม</option>
+                                <option value="เครื่องยนต์ / ไดร์">เครื่องยนต์ / ไดร์</option>
+                                <option value="ยาง / ช่วงล่าง">ยาง / ช่วงล่าง</option>
+                                <option value="ระบบไฟ / แบตเตอรี่">ระบบไฟ / แบตเตอรี่</option>
+                                <option value="เข้าเช็กระยะ PM">เข้าเช็กระยะ PM ตามรอบ</option>
+                                <option value="อื่นๆ">อื่นๆ</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-700 mb-1">ประมาณการวันที่ซ่อมเสร็จ</label>
+                            <input type="date" id="driverEstCompletionDate" class="w-full px-3 py-2 text-xs border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none bg-white font-medium">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 mb-1">รายละเอียดอาการเสียเพิ่มเติม <span class="text-rose-500">*</span></label>
+                        <textarea id="driverRemarkInput" rows="2" placeholder="ระบุอาการละเอียด เช่น ลมไคล์รั่วฝั่งซ้าย, ไฟหน้าไม่ออก, สตาร์ทไม่ติด..." class="w-full px-3.5 py-2 text-xs bg-white border border-slate-300 rounded-xl focus:ring-2 focus:ring-rose-500 outline-none transition"></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white rounded-xl font-semibold text-sm transition shadow-lg shadow-sky-600/30 flex items-center justify-center gap-2 active:scale-95">
+                    <i class="fa-solid fa-paper-plane"></i> ส่งรายงานข้อมูลประจำวัน
+                </button>
+            </form>
+        </div>
+
+        <!-- Driver Submitted Logs Section -->
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-xs font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fa-solid fa-clock-rotate-left text-sky-600"></i> ประวัติการส่งรายงานล่าสุด
+                </h3>
+                <span class="text-[10px] text-slate-400">แสดง 5 รายการล่าสุด</span>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                            <th class="p-2.5">วันที่</th>
+                            <th class="p-2.5">ทะเบียนรถ</th>
+                            <th class="p-2.5 text-center">สถานะ</th>
+                            <th class="p-2.5">รายละเอียด / คาดว่าเสร็จ</th>
+                            <th class="p-2.5 text-center">สถานะค่าซ่อม</th>
+                        </tr>
+                    </thead>
+                    <tbody id="driverLogsTableBody" class="divide-y divide-slate-100">
+                        <!-- Dynamic Driver Rows -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- VIEW 2: ADMIN / MECHANIC VIEW (โหมดแอดมิน)  -->
+    <!-- ========================================== -->
+    <div id="adminView" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex-1 w-full space-y-5 hidden">
+        
+        <!-- Controls & Timeframe Selector -->
+        <div class="bg-white p-2.5 rounded-2xl shadow-sm border border-slate-200 flex flex-col md:flex-row justify-between items-stretch md:items-center gap-3">
+            
+            <div class="flex space-x-1 overflow-x-auto p-1">
+                <button onclick="setTimeframe('daily')" id="tf-daily" class="tf-btn px-4 py-2 rounded-xl text-xs font-semibold transition flex items-center gap-2 bg-slate-900 text-white shadow-sm">
+                    <i class="fa-solid fa-calendar-day"></i> รายวัน (Daily)
+                </button>
+                <button onclick="setTimeframe('weekly')" id="tf-weekly" class="tf-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-week"></i> สะสมรายสัปดาห์ (Weekly)
+                </button>
+                <button onclick="setTimeframe('monthly')" id="tf-monthly" class="tf-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-2">
+                    <i class="fa-solid fa-calendar-days"></i> สะสมรายเดือน (Monthly)
+                </button>
+                <button onclick="setTimeframe('yearly')" id="tf-yearly" class="tf-btn px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition flex items-center gap-2">
+                    <i class="fa-solid fa-chart-line"></i> สรุปรายปี (YTD)
+                </button>
+            </div>
+
+            <div class="flex items-center space-x-2 justify-end">
+                <button onclick="generateSampleData()" class="bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-300 px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i> สุ่มข้อมูลตัวอย่าง (Seed Data)
+                </button>
+                <button onclick="clearAllData()" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3 py-1.5 rounded-xl text-xs font-semibold transition flex items-center gap-1.5">
+                    <i class="fa-solid fa-trash-can"></i> ล้างข้อมูล
+                </button>
+            </div>
+        </div>
+
+        <!-- Executive KPI Cards -->
+        <section class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5">
+            <!-- KPI 1 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-slate-500">อัตราความพร้อมใช้งาน</span>
+                    <span class="p-1.5 bg-sky-50 text-sky-600 rounded-lg text-xs"><i class="fa-solid fa-truck-fast"></i></span>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-bold text-slate-900" id="kpiAvailRate">0.0%</div>
+                    <div class="text-[11px] mt-1 text-slate-400">เป้าหมาย: >= 94.0%</div>
+                </div>
+            </div>
+
+            <!-- KPI 2 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-slate-500">ค่าซ่อมเฉลี่ย (บาท/กม.)</span>
+                    <span class="p-1.5 bg-amber-50 text-amber-600 rounded-lg text-xs"><i class="fa-solid fa-coins"></i></span>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-bold text-slate-900" id="kpiCostKm">0.00 <span class="text-xs font-normal text-slate-500">฿</span></div>
+                    <div class="text-[11px] mt-1 text-slate-400">เป้าหมายเฉลี่ย: <= 0.83 ฿</div>
+                </div>
+            </div>
+
+            <!-- KPI 3 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-slate-500">ค่าซ่อมบำรุงรวม</span>
+                    <span class="p-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs"><i class="fa-solid fa-wrench"></i></span>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-bold text-slate-900" id="kpiTotalCost">฿0</div>
+                    <div class="text-[11px] text-slate-400 mt-1" id="kpiTruckCount">จากรถทั้งหมด 120 คัน</div>
+                </div>
+            </div>
+
+            <!-- KPI 4 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-slate-500">รถจอดซ่อมปัจจุบัน</span>
+                    <span class="p-1.5 bg-rose-50 text-rose-600 rounded-lg text-xs"><i class="fa-solid fa-truck-pickup"></i></span>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-bold text-rose-600" id="kpiActiveDowntimeCount">0 <span class="text-xs font-normal text-slate-500">คัน</span></div>
+                    <div class="text-[11px] text-slate-400 mt-1" id="kpiOverdueCount">เกินกำหนดซ่อม 0 คัน</div>
+                </div>
+            </div>
+
+            <!-- KPI 5 -->
+            <div class="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 hover:shadow-md transition col-span-2 md:col-span-1">
+                <div class="flex justify-between items-start">
+                    <span class="text-xs font-medium text-slate-500">รอดำเนินการใส่ค่าซ่อม</span>
+                    <span class="p-1.5 bg-purple-50 text-purple-600 rounded-lg text-xs"><i class="fa-solid fa-triangle-exclamation"></i></span>
+                </div>
+                <div class="mt-2">
+                    <div class="text-2xl font-bold text-purple-700" id="kpiPendingCost">0 <span class="text-xs font-normal text-slate-500">รายการ</span></div>
+                    <div class="text-[11px] text-slate-400 mt-1">รอแอดมินปิดงานซ่อม</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ACTIVE DOWNTIME & PENDING REPAIRS SECTION (ตารางมอนิเตอร์รถจอดซ่อม) -->
+        <section class="bg-white p-5 rounded-2xl shadow-sm border border-rose-200/80 bg-rose-50/10">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 mb-3">
+                <div>
+                    <h2 class="font-bold text-slate-900 text-sm flex items-center gap-2">
+                        <i class="fa-solid fa-wrench text-rose-600"></i>
+                        ตารางติดตามรถจอดซ่อมและนับถอยหลังการซ่อมเสร็จ (Active Downtime & Repair Tracking)
+                    </h2>
+                    <p class="text-xs text-slate-500">มอนิเตอร์สถานะรถที่ไม่พร้อมใช้งาน ปัญหา/อาการเสีย และกำหนดการซ่อมเสร็จ</p>
+                </div>
+                <span id="activeDowntimeBadge" class="bg-rose-100 text-rose-800 text-xs px-2.5 py-1 rounded-full font-bold">0 คันกำลังซ่อม</span>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs">
+                    <thead>
+                        <tr class="bg-slate-100 text-slate-700 border-b border-slate-200">
+                            <th class="p-2.5">ทะเบียนรถ</th>
+                            <th class="p-2.5">Plant</th>
+                            <th class="p-2.5">สถานะ</th>
+                            <th class="p-2.5">อาการเสีย / ปัญหา</th>
+                            <th class="p-2.5">กำหนดเสร็จ</th>
+                            <th class="p-2.5 text-center">นับถอยหลัง</th>
+                            <th class="p-2.5 text-center">จัดการ / ใส่ค่าซ่อม</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activeDowntimeTableBody" class="divide-y divide-slate-200 bg-white">
+                        <!-- Dynamic Active Downtime Items -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Main Analytics Grid (Charts & Plant Table) -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            
+            <!-- Left Column: Matrix & Trend Charts (7 Cols) -->
+            <div class="lg:col-span-7 space-y-5">
+                
+                <!-- 4-Quadrant Matrix -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h2 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                                <i class="fa-solid fa-table-cells-large text-sky-600"></i>
+                                4-Quadrant Cost-Availability Matrix
+                            </h2>
+                            <p class="text-xs text-slate-500">ประเมินสถานะความคุ้มค่าเทียบอัตราความพร้อมใช้งาน</p>
+                        </div>
+                    </div>
+
+                    <div class="relative w-full h-[300px]">
+                        <canvas id="matrixChart"></canvas>
+                    </div>
+
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4 pt-3 border-t border-slate-100 text-xs">
+                        <div class="p-2 rounded-lg bg-emerald-50 border border-emerald-200">
+                            <div class="font-bold text-emerald-800 text-[11px]">🟢 Optimal</div>
+                            <p class="text-[10px] text-emerald-700">ค่าซ่อมต่ำ / รถพร้อมสูง</p>
+                        </div>
+                        <div class="p-2 rounded-lg bg-amber-50 border border-amber-200">
+                            <div class="font-bold text-amber-800 text-[11px]">🟡 Heavy Spend</div>
+                            <p class="text-[10px] text-amber-700">รถพร้อมสูง / ค่าซ่อมสูง</p>
+                        </div>
+                        <div class="p-2 rounded-lg bg-purple-50 border border-purple-200">
+                            <div class="font-bold text-purple-800 text-[11px]">🟣 Low Avail</div>
+                            <p class="text-[10px] text-purple-700">ค่าซ่อมต่ำ / รถไม่พร้อม</p>
+                        </div>
+                        <div class="p-2 rounded-lg bg-rose-50 border border-rose-200">
+                            <div class="font-bold text-rose-800 text-[11px]">🔴 Critical</div>
+                            <p class="text-[10px] text-rose-700">ค่าซ่อมสูง / รถไม่พร้อม</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trend Line Chart -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-chart-line text-sky-600"></i>
+                            <span>แนวโน้มค่าซ่อมบำรุง (บาท/กิโลเมตร)</span>
+                        </h3>
+                    </div>
+                    <div class="h-60">
+                        <canvas id="timeframeTrendChart"></canvas>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Right Column: Plant Summary & Master Log Table (5 Cols) -->
+            <div class="lg:col-span-5 space-y-5">
+                
+                <!-- Plant Summary Table -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h2 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-list-check text-sky-600"></i>
+                            สรุปผลตามพื้นที่ (5 Plants)
+                        </h2>
+                    </div>
+
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-left">
+                            <thead>
+                                <tr class="bg-slate-50 text-slate-600 border-b border-slate-200">
+                                    <th class="p-2 font-semibold">Plant</th>
+                                    <th class="p-2 font-semibold text-center">Avail %</th>
+                                    <th class="p-2 font-semibold text-center">฿/KM</th>
+                                    <th class="p-2 font-semibold text-right">สถานะ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="plantSummaryTableBody" class="divide-y divide-slate-100">
+                                <!-- Dynamic Plant Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="mt-4 p-3 bg-slate-50 rounded-xl border border-slate-200 text-xs text-slate-600">
+                        <div class="font-semibold text-slate-800 mb-1">🎯 KPI เป้าหมาย Cost/KM:</div>
+                        <div class="grid grid-cols-5 gap-1 text-center text-[10px] font-medium">
+                            <div class="bg-white p-1 rounded border">PT: 0.95</div>
+                            <div class="bg-white p-1 rounded border">CH: 0.88</div>
+                            <div class="bg-white p-1 rounded border">KR: 0.75</div>
+                            <div class="bg-white p-1 rounded border">NS: 0.85</div>
+                            <div class="bg-white p-1 rounded border">SR: 0.75</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Complete Master Log Table -->
+                <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            <i class="fa-solid fa-database text-sky-600"></i>
+                            ฐานข้อมูลบันทึกทั้งหมด
+                        </h3>
+                    </div>
+
+                    <div class="overflow-y-auto max-h-72 text-xs">
+                        <table class="w-full text-left">
+                            <thead class="bg-slate-50 text-slate-600 sticky top-0">
+                                <tr class="border-b border-slate-200">
+                                    <th class="p-2">วันที่</th>
+                                    <th class="p-2">ทะเบียน</th>
+                                    <th class="p-2 text-center">พร้อม</th>
+                                    <th class="p-2 text-right">ค่าซ่อม (฿)</th>
+                                    <th class="p-2 text-center">จัดการ</th>
+                                </tr>
+                            </thead>
+                            <tbody id="masterLogsTableBody" class="divide-y divide-slate-100">
+                                <!-- Dynamic Master Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- ========================================== -->
+    <!-- MODAL: ADMIN ADD/EDIT COST & CLOSE REPAIR  -->
+    <!-- ========================================== -->
+    <div id="costModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-xl p-6 m-4 space-y-4 relative">
+            <button onclick="closeCostModal()" class="absolute top-4 right-4 text-slate-400 hover:text-slate-600 text-lg">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+
+            <div class="border-b border-slate-100 pb-3">
+                <h3 class="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <i class="fa-solid fa-file-invoice-dollar text-sky-600"></i>
+                    บันทึกค่าซ่อม & ปิดงานซ่อม (Admin Cost Entry)
+                </h3>
+                <p class="text-xs text-slate-500" id="costModalSubtitle">อัปเดตค่าใช้จ่ายซ่อมแซมและปรับสถานะคืนความพร้อมรถ</p>
+            </div>
+
+            <form id="costEntryForm" onsubmit="handleCostFormSubmit(event)" class="space-y-3 text-xs">
+                <input type="hidden" id="modalRecordId">
+
+                <!-- Readonly Details from Driver -->
+                <div class="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-1 text-slate-700">
+                    <div class="flex justify-between">
+                        <div><strong>ทะเบียนรถ:</strong> <span id="modalTruck"></span></div>
+                        <div><strong>Plant:</strong> <span id="modalPlant"></span></div>
+                    </div>
+                    <div><strong>สถานะแจ้งเตือน:</strong> <span id="modalStatus"></span></div>
+                    <div><strong>ปัญหา/อาการเสีย:</strong> <span id="modalRemark" class="text-rose-700 font-medium"></span></div>
+                    <div><strong>ประมาณการเสร็จ:</strong> <span id="modalEstCompletion" class="font-semibold"></span></div>
+                </div>
+
+                <!-- Admin Cost Inputs -->
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">ค่าซ่อมบำรุงสุทธิ (บาท) <span class="text-rose-500">*</span></label>
+                    <input type="number" id="modalCostInput" min="0" placeholder="เช่น 2500" required class="w-full px-3.5 py-2.5 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none font-semibold text-slate-900 text-sm">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">หมวดหมู่งานซ่อม</label>
+                        <select id="modalCategoryInput" class="w-full px-3.5 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none">
+                            <option value="เครื่องยนต์ / ไดร์">เครื่องยนต์ / ไดร์</option>
+                            <option value="ระบบเบรก / ลม">ระบบเบรก / ลม</option>
+                            <option value="ยาง / ช่วงล่าง">ยาง / ช่วงล่าง</option>
+                            <option value="ระบบไฟ / แบตเตอรี่">ระบบไฟ / แบตเตอรี่</option>
+                            <option value="เช็กระยะ PM / ออยล์">เช็กระยะ PM / ออยล์</option>
+                            <option value="อื่นๆ">อื่นๆ</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-semibold text-slate-700 mb-1">สถานะหลังลงบันทึก</label>
+                        <select id="modalRepairStatusInput" class="w-full px-3.5 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none font-semibold">
+                            <option value="completed" class="text-emerald-700">ซ่อมเสร็จ / คืนรถพร้อมใช้ (Ready)</option>
+                            <option value="in_progress" class="text-rose-700">ยังซ่อมไม่เสร็จ (In Progress)</option>
+                            <option value="waiting_parts" class="text-amber-700">รอสั่งซื้ออะไหล่ (Waiting Parts)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-semibold text-slate-700 mb-1">บันทึกช่างซ่อมบำรุง / รายการอะไหล่เปลี่ยน</label>
+                    <input type="text" id="modalMechanicNoteInput" placeholder="เช่น เปลี่ยนผ้าเบรกหลังคู่ขวา + เจียรจาน" class="w-full px-3.5 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+
+                <div class="pt-3 flex justify-end space-x-2 border-t border-slate-100">
+                    <button type="button" onclick="closeCostModal()" class="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold transition">ยกเลิก</button>
+                    <button type="submit" class="px-4 py-2 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold transition shadow-sm flex items-center gap-1.5">
+                        <i class="fa-solid fa-save"></i> บันทึกข้อมูล
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- JavaScript Core Logic Application -->
+    <script>
+        // Target Benchmarks per Plant (2026 KPI)
+        const PLANT_TARGETS = {
+            PT: { cost: 0.95, avail: 93.0, totalTrucks: 25 },
+            CH: { cost: 0.88, avail: 94.0, totalTrucks: 20 },
+            KR: { cost: 0.75, avail: 95.0, totalTrucks: 30 },
+            NS: { cost: 0.85, avail: 94.0, totalTrucks: 20 },
+            SR: { cost: 0.75, avail: 95.0, totalTrucks: 25 }
+        };
+
+        const STORAGE_KEY = 'tbl_fleet_records_v3';
+        
+        let currentRole = 'driver';
+        let currentTimeframe = 'daily';
+        let fleetDatabase = [];
+
+        let matrixChartInstance = null;
+        let trendChartInstance = null;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const today = new Date();
+            const dateOptions = { year: 'numeric', month: 'short', day: 'numeric', weekday: 'short' };
+            document.getElementById('currentDateDriver').innerText = today.toLocaleDateString('th-TH', dateOptions);
+
+            // Handle Custom Truck Selection Dropdown
+            document.getElementById('driverTruckSelect').addEventListener('change', function() {
+                const customInput = document.getElementById('driverCustomTruck');
+                if (this.value === 'custom') {
+                    customInput.classList.remove('hidden');
+                    customInput.required = true;
+                } else {
+                    customInput.classList.add('hidden');
+                    customInput.required = false;
+                }
+            });
+
+            loadDatabase();
+
+            if (fleetDatabase.length === 0) {
+                generateSampleData();
+            } else {
+                updateAllViews();
+            }
+        });
+
+        function toggleDriverRepairFields() {
+            const status = document.getElementById('driverStatusSelect').value;
+            const repairFields = document.getElementById('driverRepairFields');
+            const distInput = document.getElementById('driverDistanceInput');
+
+            if (status === 'down' || status === 'pm') {
+                repairFields.classList.remove('hidden');
+                distInput.value = 0;
+            } else {
+                repairFields.classList.add('hidden');
+            }
+        }
+
+        function loadDatabase() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (raw) {
+                try {
+                    fleetDatabase = JSON.parse(raw);
+                } catch (e) {
+                    fleetDatabase = [];
+                }
+            }
+        }
+
+        function saveDatabase() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(fleetDatabase));
+            updateAllViews();
+        }
+
+        function switchRole(role) {
+            currentRole = role;
+            const driverView = document.getElementById('driverView');
+            const adminView = document.getElementById('adminView');
+            const btnDriver = document.getElementById('roleBtnDriver');
+            const btnAdmin = document.getElementById('roleBtnAdmin');
+
+            if (role === 'driver') {
+                driverView.classList.remove('hidden');
+                adminView.classList.add('hidden');
+
+                btnDriver.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 bg-sky-600 text-white shadow-sm';
+                btnAdmin.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-2';
+            } else {
+                driverView.classList.add('hidden');
+                adminView.classList.remove('hidden');
+
+                btnAdmin.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-2 bg-sky-600 text-white shadow-sm';
+                btnDriver.className = 'px-3.5 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-white transition flex items-center gap-2';
+            }
+
+            updateAllViews();
+        }
+
+        function handleDriverSubmit(e) {
+            e.preventDefault();
+
+            const truckSelect = document.getElementById('driverTruckSelect').value;
+            const truckPlate = truckSelect === 'custom' ? document.getElementById('driverCustomTruck').value : truckSelect;
+            const plant = document.getElementById('driverPlantSelect').value;
+            const status = document.getElementById('driverStatusSelect').value;
+            const distance = Number(document.getElementById('driverDistanceInput').value);
+            const remark = document.getElementById('driverRemarkInput').value;
+            const category = document.getElementById('driverIssueCategory').value;
+            const estDate = document.getElementById('driverEstCompletionDate').value;
+            const todayStr = new Date().toISOString().split('T')[0];
+
+            const newRecord = {
+                id: 'REC-' + Date.now(),
+                date: todayStr,
+                truckPlate: truckPlate,
+                plant: plant,
+                status: status, // 'ready', 'down', 'pm'
+                distance: distance,
+                remark: remark || (status === 'ready' ? 'วิ่งงานปกติ' : 'ไม่ได้ระบุอาการ'),
+                category: status !== 'ready' ? category : null,
+                estCompletionDate: status !== 'ready' ? (estDate || todayStr) : null,
+                cost: null, 
+                repairStatus: status === 'ready' ? 'completed' : 'in_progress',
+                mechanicNote: '',
+                submittedByDriver: true
+            };
+
+            fleetDatabase.unshift(newRecord);
+            saveDatabase();
+
+            document.getElementById('driverEntryForm').reset();
+            document.getElementById('driverCustomTruck').classList.add('hidden');
+            document.getElementById('driverRepairFields').classList.add('hidden');
+
+            showToast('ส่งรายงานความพร้อมและอาการซ่อมเรียบร้อยแล้ว');
+        }
+
+        function openCostModal(id) {
+            const record = fleetDatabase.find(r => r.id === id);
+            if (!record) return;
+
+            document.getElementById('modalRecordId').value = record.id;
+            document.getElementById('modalTruck').innerText = record.truckPlate;
+            document.getElementById('modalPlant').innerText = record.plant;
+            
+            const statusMap = { ready: '🟢 พร้อมใช้งาน', down: '🔴 จอดซ่อม', pm: '🟡 เช็กระยะ PM' };
+            document.getElementById('modalStatus').innerText = statusMap[record.status] || record.status;
+            document.getElementById('modalRemark').innerText = record.remark || '-';
+            document.getElementById('modalEstCompletion').innerText = record.estCompletionDate || 'ไม่ระบุ';
+
+            document.getElementById('modalCostInput').value = record.cost !== null ? record.cost : '';
+            document.getElementById('modalCategoryInput').value = record.category || 'เครื่องยนต์ / ไดร์';
+            document.getElementById('modalRepairStatusInput').value = record.repairStatus || (record.status === 'ready' ? 'completed' : 'in_progress');
+            document.getElementById('modalMechanicNoteInput').value = record.mechanicNote || '';
+
+            document.getElementById('costModal').classList.remove('hidden');
+        }
+
+        function closeCostModal() {
+            document.getElementById('costModal').classList.add('hidden');
+        }
+
+        function handleCostFormSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('modalRecordId').value;
+            const record = fleetDatabase.find(r => r.id === id);
+
+            if (record) {
+                record.cost = Number(document.getElementById('modalCostInput').value);
+                record.category = document.getElementById('modalCategoryInput').value;
+                record.repairStatus = document.getElementById('modalRepairStatusInput').value;
+                record.mechanicNote = document.getElementById('modalMechanicNoteInput').value;
+
+                // If marked as completed, change truck status to ready
+                if (record.repairStatus === 'completed') {
+                    record.status = 'ready';
+                }
+
+                saveDatabase();
+                closeCostModal();
+                showToast('อัปเดตค่าซ่อมและสถานะรถเรียบร้อยแล้ว');
+            }
+        }
+
+        function deleteRecord(id) {
+            if (confirm('คุณต้องการลบรายการบันทึกนี้ใช่หรือไม่?')) {
+                fleetDatabase = fleetDatabase.filter(r => r.id !== id);
+                saveDatabase();
+                showToast('ลบรายการเรียบร้อยแล้ว');
+            }
+        }
+
+        function setTimeframe(tf) {
+            currentTimeframe = tf;
+            document.querySelectorAll('.tf-btn').forEach(btn => {
+                btn.classList.remove('bg-slate-900', 'text-white', 'shadow-sm');
+                btn.classList.add('text-slate-600', 'hover:text-slate-900', 'hover:bg-slate-100');
+            });
+
+            const activeBtn = document.getElementById(`tf-${tf}`);
+            activeBtn.classList.add('bg-slate-900', 'text-white', 'shadow-sm');
+            activeBtn.classList.remove('text-slate-600', 'hover:text-slate-900', 'hover:bg-slate-100');
+
+            updateAdminView();
+        }
+
+        function updateAllViews() {
+            renderDriverLogs();
+            updateAdminView();
+        }
+
+        function renderDriverLogs() {
+            const tbody = document.getElementById('driverLogsTableBody');
+            tbody.innerHTML = '';
+
+            const logs = fleetDatabase.slice(0, 5);
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">ยังไม่มีประวัติการส่งรายงาน</td></tr>`;
+                return;
+            }
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+
+                const statusBadge = log.status === 'ready' 
+                    ? `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-[10px]">Ready</span>`
+                    : log.status === 'down'
+                    ? `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-semibold text-[10px]">Down</span>`
+                    : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold text-[10px]">PM</span>`;
+
+                const detailText = log.status === 'ready' 
+                    ? `วิ่ง ${log.distance.toLocaleString()} กม.` 
+                    : `${log.remark || '-'} (เสร็จ: ${log.estCompletionDate || 'ไม่ระบุ'})`;
+
+                const costStatus = log.cost !== null
+                    ? `<span class="text-emerald-600 font-semibold"><i class="fa-solid fa-check"></i> ลงค่าซ่อมแล้ว</span>`
+                    : `<span class="text-amber-600 font-semibold"><i class="fa-solid fa-hourglass-half"></i> รอช่างสรุป</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-2.5 text-slate-500">${log.date}</td>
+                    <td class="p-2.5 font-bold text-slate-800">${log.truckPlate} <span class="text-[10px] text-slate-400">(${log.plant})</span></td>
+                    <td class="p-2.5 text-center">${statusBadge}</td>
+                    <td class="p-2.5 text-slate-700 max-w-xs truncate">${detailText}</td>
+                    <td class="p-2.5 text-center">${costStatus}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateAdminView() {
+            const activeDowntimeList = fleetDatabase.filter(r => r.status === 'down' || r.status === 'pm' || r.repairStatus === 'in_progress' || r.repairStatus === 'waiting_parts');
+            const pendingCostList = fleetDatabase.filter(r => r.cost === null);
+
+            document.getElementById('activeDowntimeBadge').innerText = `${activeDowntimeList.length} คันกำลังซ่อม`;
+            document.getElementById('kpiActiveDowntimeCount').innerHTML = `${activeDowntimeList.length} <span class="text-xs font-normal text-slate-500">คัน</span>`;
+            document.getElementById('kpiPendingCost').innerHTML = `${pendingCostList.length} <span class="text-xs font-normal text-slate-500">รายการ</span>`;
+
+            // Calculate Overdue Repairs
+            const todayStr = new Date().toISOString().split('T')[0];
+            let overdueCount = 0;
+
+            const downtimeTbody = document.getElementById('activeDowntimeTableBody');
+            downtimeTbody.innerHTML = '';
+
+            if (activeDowntimeList.length === 0) {
+                downtimeTbody.innerHTML = `<tr><td colspan="7" class="p-4 text-center text-slate-400">ไม่มีรถจอดซ่อมในขณะนี้ รถทุกคันพร้อมใช้งาน! 🎉</td></tr>`;
+            } else {
+                activeDowntimeList.forEach(item => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-rose-100/40 transition';
+
+                    const statusBadge = item.status === 'down' 
+                        ? `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-bold text-[10px]">🔴 Down</span>`
+                        : `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold text-[10px]">🟡 PM</span>`;
+
+                    // Countdown Calculation
+                    let countdownBadge = '';
+                    if (item.estCompletionDate) {
+                        const targetDate = new Date(item.estCompletionDate);
+                        const currDate = new Date(todayStr);
+                        const diffTime = targetDate - currDate;
+                        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                        if (diffDays < 0) {
+                            overdueCount++;
+                            countdownBadge = `<span class="px-2 py-0.5 rounded-md bg-rose-600 text-white font-bold text-[10px] animate-pulse">เกินกำหนด ${Math.abs(diffDays)} วัน</span>`;
+                        } else if (diffDays === 0) {
+                            countdownBadge = `<span class="px-2 py-0.5 rounded-md bg-amber-500 text-white font-bold text-[10px]">ต้องเสร็จวันนี้</span>`;
+                        } else {
+                            countdownBadge = `<span class="px-2 py-0.5 rounded-md bg-sky-100 text-sky-800 font-semibold text-[10px]">เหลืออีก ${diffDays} วัน</span>`;
+                        }
+                    } else {
+                        countdownBadge = `<span class="text-slate-400 text-[10px]">ไม่ระบุ</span>`;
+                    }
+
+                    tr.innerHTML = `
+                        <td class="p-2.5 font-bold text-slate-900">${item.truckPlate}</td>
+                        <td class="p-2.5 font-semibold text-slate-700">${item.plant}</td>
+                        <td class="p-2.5 text-center">${statusBadge}</td>
+                        <td class="p-2.5 text-slate-800 font-medium">
+                            <div>${item.remark || '-'}</div>
+                            <div class="text-[10px] text-slate-400">หมวด: ${item.category || 'ทั่วไป'}</div>
+                        </td>
+                        <td class="p-2.5 text-slate-600 font-medium">${item.estCompletionDate || '-'}</td>
+                        <td class="p-2.5 text-center">${countdownBadge}</td>
+                        <td class="p-2.5 text-center">
+                            <button onclick="openCostModal('${item.id}')" class="px-3 py-1 bg-sky-600 hover:bg-sky-500 text-white rounded-lg text-[11px] font-semibold transition shadow-sm flex items-center gap-1 mx-auto">
+                                <i class="fa-solid fa-wrench"></i> บันทึกค่าซ่อม & ปิดงาน
+                            </button>
+                        </td>
+                    `;
+                    downtimeTbody.appendChild(tr);
+                });
+            }
+
+            document.getElementById('kpiOverdueCount').innerText = `เกินกำหนดซ่อม ${overdueCount} คัน`;
+
+            // Aggregate Plant Summaries
+            let aggregatedPlants = {};
+            ['PT', 'CH', 'KR', 'NS', 'SR'].forEach(p => {
+                aggregatedPlants[p] = {
+                    plant: p,
+                    totalTrucks: PLANT_TARGETS[p].totalTrucks,
+                    readyTrucksCount: 0,
+                    totalDistance: 0,
+                    totalCost: 0,
+                    entriesCount: 0
+                };
+            });
+
+            fleetDatabase.forEach(r => {
+                if (aggregatedPlants[r.plant]) {
+                    const p = aggregatedPlants[r.plant];
+                    p.entriesCount += 1;
+                    if (r.status === 'ready') p.readyTrucksCount += 1;
+                    p.totalDistance += r.distance;
+                    if (r.cost !== null) p.totalCost += r.cost;
+                }
+            });
+
+            let grandDistance = 0;
+            let grandCost = 0;
+            let grandTrucks = 0;
+            let grandReady = 0;
+
+            const plantList = Object.values(aggregatedPlants);
+            plantList.forEach(p => {
+                grandDistance += p.totalDistance;
+                grandCost += p.totalCost;
+                grandTrucks += p.totalTrucks;
+                grandReady += (p.entriesCount > 0 ? (p.readyTrucksCount / p.entriesCount) * p.totalTrucks : p.totalTrucks);
+
+                p.actualAvail = p.entriesCount > 0 ? ((p.readyTrucksCount / p.entriesCount) * 100) : 95.0;
+                p.actualCostKm = p.totalDistance > 0 ? (p.totalCost / p.totalDistance) : 0;
+            });
+
+            const overallAvail = grandTrucks > 0 ? (grandReady / grandTrucks) * 100 : 0;
+            const overallCostKm = grandDistance > 0 ? (grandCost / grandDistance) : 0;
+
+            document.getElementById('kpiAvailRate').innerText = overallAvail.toFixed(1) + '%';
+            document.getElementById('kpiCostKm').innerHTML = overallCostKm.toFixed(2) + ' <span class="text-xs font-normal text-slate-500">฿</span>';
+            document.getElementById('kpiTotalCost').innerText = '฿' + grandCost.toLocaleString();
+            document.getElementById('kpiTotalKm').innerHTML = grandDistance.toLocaleString() + ' <span class="text-xs font-normal text-slate-500">กม.</span>';
+
+            renderPlantSummaryTable(plantList);
+            renderMasterLogsTable();
+            renderMatrixChart(plantList);
+            renderTrendChart();
+        }
+
+        function renderPlantSummaryTable(plantList) {
+            const tbody = document.getElementById('plantSummaryTableBody');
+            tbody.innerHTML = '';
+
+            plantList.sort((a, b) => a.actualCostKm - b.actualCostKm);
+
+            plantList.forEach(p => {
+                const target = PLANT_TARGETS[p.plant];
+                const isCostGood = p.actualCostKm <= target.cost;
+                const isAvailGood = p.actualAvail >= target.avail;
+
+                let statusBadge = '';
+                if (isCostGood && isAvailGood) {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-semibold text-[10px]">Optimal</span>`;
+                } else if (!isCostGood && isAvailGood) {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-semibold text-[10px]">Heavy Spend</span>`;
+                } else if (isCostGood && !isAvailGood) {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 font-semibold text-[10px]">Low Avail</span>`;
+                } else {
+                    statusBadge = `<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 font-semibold text-[10px]">Critical</span>`;
+                }
+
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                tr.innerHTML = `
+                    <td class="p-2 font-bold text-slate-800">${p.plant}</td>
+                    <td class="p-2 text-center font-semibold ${isAvailGood ? 'text-emerald-600' : 'text-rose-600'}">${p.actualAvail.toFixed(1)}%</td>
+                    <td class="p-2 text-center font-semibold ${isCostGood ? 'text-emerald-600' : 'text-rose-600'}">${p.actualCostKm.toFixed(2)}</td>
+                    <td class="p-2 text-right">${statusBadge}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderMasterLogsTable() {
+            const tbody = document.getElementById('masterLogsTableBody');
+            tbody.innerHTML = '';
+
+            const logs = fleetDatabase.slice(0, 15);
+            if (logs.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">ไม่มีข้อมูลในระบบ</td></tr>`;
+                return;
+            }
+
+            logs.forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50 transition';
+                const statusDot = log.status === 'ready' ? '🟢' : log.status === 'down' ? '🔴' : '🟡';
+                const costDisplay = log.cost !== null ? `฿${log.cost.toLocaleString()}` : `<span class="text-amber-500 font-semibold">รอค่าซ่อม</span>`;
+
+                tr.innerHTML = `
+                    <td class="p-2 text-slate-500">${log.date.substr(5)}</td>
+                    <td class="p-2 font-bold text-slate-800">${log.truckPlate}</td>
+                    <td class="p-2 text-center">${statusDot}</td>
+                    <td class="p-2 text-right font-medium">${costDisplay}</td>
+                    <td class="p-2 text-center space-x-1">
+                        <button onclick="openCostModal('${log.id}')" class="text-sky-600 hover:text-sky-800 p-1" title="แก้ไข"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteRecord('${log.id}')" class="text-rose-500 hover:text-rose-700 p-1" title="ลบ"><i class="fa-solid fa-trash-can"></i></button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderMatrixChart(plantList) {
+            const ctx = document.getElementById('matrixChart').getContext('2d');
+
+            const scatterData = plantList.map(p => ({
+                x: Number(p.actualCostKm.toFixed(2)),
+                y: Number(p.actualAvail.toFixed(1)),
+                plant: p.plant
+            }));
+
+            if (matrixChartInstance) matrixChartInstance.destroy();
+
+            matrixChartInstance = new Chart(ctx, {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Plant Position',
+                        data: scatterData,
+                        backgroundColor: '#0284c7',
+                        pointRadius: 9,
+                        pointHoverRadius: 12,
+                        pointBackgroundColor: '#0284c7',
+                        pointBorderColor: '#ffffff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const p = context.raw;
+                                    return `${p.plant}: ค่าซ่อม ${p.x} ฿/กม., ความพร้อม ${p.y}%`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            title: { display: true, text: 'ค่าซ่อมบำรุง (บาท/กิโลเมตร)', font: { family: 'Prompt', size: 11 } },
+                            min: 0.40,
+                            max: 1.30,
+                            grid: { color: 'rgba(203, 213, 225, 0.4)' }
+                        },
+                        y: {
+                            title: { display: true, text: 'อัตราความพร้อมรถใช้งาน (%)', font: { family: 'Prompt', size: 11 } },
+                            min: 80,
+                            max: 100,
+                            grid: { color: 'rgba(203, 213, 225, 0.4)' }
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderTrendChart() {
+            const ctx = document.getElementById('timeframeTrendChart').getContext('2d');
+            if (trendChartInstance) trendChartInstance.destroy();
+
+            const labels = ['สัปดาห์ 1', 'สัปดาห์ 2', 'สัปดาห์ 3', 'สัปดาห์ 4 (ปัจจุบัน)'];
+            const datasets = [
+                { label: 'PT', data: [0.98, 0.94, 0.96, 0.95], borderColor: '#f59e0b', tension: 0.2 },
+                { label: 'CH', data: [0.92, 0.90, 0.89, 0.88], borderColor: '#ef4444', tension: 0.2 },
+                { label: 'KR', data: [0.78, 0.76, 0.75, 0.74], borderColor: '#10b981', tension: 0.2 },
+                { label: 'NS', data: [0.89, 0.86, 0.85, 0.85], borderColor: '#8b5cf6', tension: 0.2 },
+                { label: 'SR', data: [0.79, 0.77, 0.76, 0.75], borderColor: '#06b6d4', tension: 0.2 }
+            ];
+
+            trendChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: { labels: labels, datasets: datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'top', labels: { font: { family: 'Prompt', size: 11 } } }
+                    },
+                    scales: {
+                        y: { title: { display: true, text: '฿/กิโลเมตร', font: { family: 'Prompt' } } }
+                    }
+                }
+            });
+        }
+
+        function generateSampleData() {
+            const trucks = ['629330กท', '629331กท', '634973กท', '634974กท', '634975กท', '634976กท', '634977กท', '634980กท', '634981กท'];
+            const plants = ['PT', 'CH', 'KR', 'NS', 'SR'];
+            const issues = ['ผ้าเบรกหมด / ลมไคล์รั่ว', 'เปลี่ยนน้ำมันเครื่อง PM', 'สายพานหน้าเครื่องขาด', 'ไฟเลี้ยวขวาไม่ติด / ไดชาร์จ', 'ยางหน้าขวาบวม'];
+            const categories = ['ระบบเบรก / ลม', 'เช็กระยะ PM / ออยล์', 'เครื่องยนต์ / ไดร์', 'ระบบไฟ / แบตเตอรี่', 'ยาง / ช่วงล่าง'];
+            const dummy = [];
+
+            const today = new Date();
+
+            for (let i = 0; i < 20; i++) {
+                const dateObj = new Date(today);
+                dateObj.setDate(today.getDate() - Math.floor(i / 2));
+                const dateStr = dateObj.toISOString().split('T')[0];
+
+                const estObj = new Date(today);
+                estObj.setDate(today.getDate() + (i % 3 === 0 ? -1 : (i % 3 === 1 ? 0 : 2)));
+                const estDateStr = estObj.toISOString().split('T')[0];
+
+                const plant = plants[i % plants.length];
+                const truck = trucks[i % trucks.length];
+                const isReady = i >= 4; // Top 4 items are active downtime / repair
+
+                const distance = isReady ? 280 + Math.floor(Math.random() * 150) : 0;
+
+                dummy.push({
+                    id: 'REC-SAMPLE-' + (1000 + i),
+                    date: dateStr,
+                    truckPlate: truck,
+                    plant: plant,
+                    status: isReady ? 'ready' : (i % 2 === 0 ? 'down' : 'pm'),
+                    distance: distance,
+                    remark: isReady ? 'รอบวิ่งงานปกติ' : issues[i % issues.length],
+                    category: categories[i % categories.length],
+                    estCompletionDate: isReady ? null : estDateStr,
+                    cost: isReady ? Math.floor(distance * 0.75) : null,
+                    repairStatus: isReady ? 'completed' : (i % 3 === 0 ? 'waiting_parts' : 'in_progress'),
+                    mechanicNote: isReady ? 'ตรวจสภาพทั่วไปเรียบร้อย' : 'กำลังรอดำเนินการซ่อมเปลี่ยนอะไหล่',
+                    submittedByDriver: true
+                });
+            }
+
+            fleetDatabase = dummy;
+            saveDatabase();
+            showToast('สร้างข้อมูลตัวอย่างรถจอดซ่อมเรียบร้อยแล้ว');
+        }
+
+        function clearAllData() {
+            if (confirm('คุณแน่ใจหรือไม่ว่าต้องการล้างข้อมูลทั้งหมดในระบบ?')) {
+                fleetDatabase = [];
+                saveDatabase();
+                showToast('ล้างข้อมูลเรียบร้อยแล้ว');
+            }
+        }
+
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            document.getElementById('toastMessage').innerText = msg;
+            toast.classList.remove('hidden');
+            setTimeout(() => {
+                toast.classList.add('hidden');
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
