@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TBL Fleet - บันทึกข้อมูลประจำวัน (สำหรับ พขร.)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Prompt', sans-serif; background-color: #f8fafc; }</style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col justify-between">
+
+    <!-- Header -->
+    <header class="bg-slate-900 text-white shadow-md p-4 sticky top-0 z-50">
+        <div class="max-w-md mx-auto flex items-center space-x-3">
+            <div class="bg-sky-500 p-2 rounded-xl text-white">
+                <i class="fa-solid fa-truck-steering text-xl"></i>
+            </div>
+            <div>
+                <h1 class="text-base font-bold leading-tight">TBL Fleet Service</h1>
+                <p class="text-xs text-sky-300">ระบบบันทึกความพร้อมรถประจำวัน (สำหรับ พขร.)</p>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-md mx-auto p-4 w-full flex-1">
+        <div class="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+            <div class="border-b pb-3 mb-4">
+                <h2 class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-sky-600"></i>
+                    กรอกข้อมูลการใช้วิ่งงานประจำวัน
+                </h2>
+                <p class="text-xs text-slate-500">กรุณาเลือกทะเบียนรถ และรายงานสถานะตามความเป็นจริง</p>
+            </div>
+
+            <form id="driverForm" onsubmit="submitDriverData(event)" class="space-y-4 text-xs">
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">วันที่</label>
+                    <input type="date" id="dDate" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">พื้นที่ (Plant)</label>
+                        <select id="dPlant" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none">
+                            <option value="PT">PT</option>
+                            <option value="CH">CH</option>
+                            <option value="KR">KR</option>
+                            <option value="NS">NS</option>
+                            <option value="SR">SR</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block font-medium text-slate-700 mb-1">ทะเบียนรถหัวลาก</label>
+                        <input type="text" id="dTruck" placeholder="เช่น 62-9330 กท" required class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">สถานะความพร้อมรถวันนี้</label>
+                    <select id="dStatus" onchange="toggleDownFields()" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none font-semibold text-slate-800">
+                        <option value="ready">🟢 รถพร้อมใช้งาน (Ready)</option>
+                        <option value="down">🔴 จอดซ่อม / รอเช็คระยะ (Down)</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">ระยะทางวิ่งวันนี้ / เลขไมล์ (กม.)</label>
+                    <input type="number" id="dKm" placeholder="ระบุระยะทางวิ่ง (กม.)" required min="0" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+
+                <!-- Down Status Extra Fields -->
+                <div id="downSection" class="hidden p-3 bg-rose-50 border border-rose-200 rounded-xl space-y-3">
+                    <div>
+                        <label class="block font-medium text-rose-800 mb-1">สาเหตุ / อาการเสียที่พบ</label>
+                        <input type="text" id="dIssue" placeholder="เช่น สายพานพัดลมขาด, เบรกมีเสียงดัง" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-rose-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block font-medium text-rose-800 mb-1">ประมาณการวันที่ซ่อมเสร็จ (Est. Finish)</label>
+                        <input type="date" id="dEstDate" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-rose-500 outline-none">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block font-medium text-slate-700 mb-1">หมายเหตุเพิ่มเติม (ถ้ามี)</label>
+                    <input type="text" id="dRemark" placeholder="บันทึกข้อความเพิ่มเติม" class="w-full px-3 py-2 border rounded-xl focus:ring-2 focus:ring-sky-500 outline-none">
+                </div>
+
+                <button type="submit" class="w-full py-3 bg-sky-600 hover:bg-sky-500 text-white font-bold rounded-xl shadow-md transition text-sm flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> ส่งข้อมูลเข้าศูนย์ซ่อมบำรุง
+                </button>
+            </form>
+        </div>
+
+        <div id="successMsg" class="hidden mt-4 p-4 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-2xl text-center text-xs">
+            <i class="fa-solid fa-circle-check text-2xl text-emerald-500 mb-1"></i>
+            <p class="font-bold text-sm">บันทึกข้อมูลเรียบร้อยแล้ว!</p>
+            <p class="mt-0.5">ขอบคุณที่ร่วมรายงานสถานะรถประจำวันครับ</p>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="text-center p-4 text-xs text-slate-400 border-t border-slate-200 bg-white">
+        TBL Fleet Maintenance & Data Collector System
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            document.getElementById('dDate').value = new Date().toISOString().split('T')[0];
+        });
+
+        function toggleDownFields() {
+            const status = document.getElementById('dStatus').value;
+            const downSec = document.getElementById('downSection');
+            if (status === 'down') {
+                downSec.classList.remove('hidden');
+            } else {
+                downSec.classList.add('hidden');
+            }
+        }
+
+        function submitDriverData(e) {
+            e.preventDefault();
+            const date = document.getElementById('dDate').value;
+            const plant = document.getElementById('dPlant').value;
+            const truck = document.getElementById('dTruck').value;
+            const status = document.getElementById('dStatus').value;
+            const km = Number(document.getElementById('dKm').value);
+            const issue = document.getElementById('dIssue').value || 'เช็กระยะปกติ';
+            const estDate = document.getElementById('dEstDate').value;
+            const remark = document.getElementById('dRemark').value;
+
+            // Save to shared localStorage key
+            let db = JSON.parse(localStorage.getItem('tbl_fleet_records') || '[]');
+            db.push({
+                id: Date.now(),
+                date: date,
+                plant: plant,
+                truck: truck,
+                status: status,
+                km: km,
+                issue: issue,
+                estDate: estDate,
+                remark: remark,
+                cost: 0, // Pending cost by admin
+                costPending: true
+            });
+            localStorage.setItem('tbl_fleet_records', JSON.stringify(db));
+
+            // Show feedback
+            document.getElementById('driverForm').reset();
+            document.getElementById('dDate').value = new Date().toISOString().split('T')[0];
+            document.getElementById('downSection').classList.add('hidden');
+            
+            const msg = document.getElementById('successMsg');
+            msg.classList.remove('hidden');
+            setTimeout(() => { msg.classList.add('hidden'); }, 3000);
+        }
+    </script>
+</body>
+</html>
